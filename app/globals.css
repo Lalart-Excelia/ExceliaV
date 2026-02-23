@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root{
+  --bg: #0b0f0d;
+  --bg2:#0f1714;
+  --surf:#0f1a15;
+  --surf2:#132019;
+  --border: rgba(255,255,255,0.08);
+  --tx:#e7f2ec;
+  --tx2: rgba(231,242,236,0.78);
+  --muted: rgba(231,242,236,0.62);
+  --accent:#18a84a; /* Excel green modern */
+  --accent2:#0b7bd6; /* ocean blue */
+  --danger:#ef4444;
+  --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  --radius: 16px;
+}
+
+.light{
+  --bg: #f6f6f0;
+  --bg2:#efefe6;
+  --surf:#ffffff;
+  --surf2:#fafaf2;
+  --border: rgba(18,18,12,0.14);
+  --tx:#12120c;
+  --tx2: rgba(18,18,12,0.78);
+  --muted: rgba(18,18,12,0.62);
+  --accent:#107c41;
+  --accent2:#0b5ea8;
+  --danger:#dc2626;
+  --shadow: 0 10px 30px rgba(15,15,10,0.12);
+}
+
+html, body { height:100%; }
+body{
+  background: radial-gradient(1200px 800px at 10% 10%, rgba(24,168,74,0.18), transparent 60%),
+              radial-gradient(900px 700px at 90% 20%, rgba(11,123,214,0.12), transparent 65%),
+              var(--bg);
+  color: var(--tx);
+}
+.light body{
+  background: radial-gradient(1200px 800px at 10% 10%, rgba(16,124,65,0.14), transparent 60%),
+              radial-gradient(900px 700px at 90% 20%, rgba(11,94,168,0.10), transparent 65%),
+              var(--bg);
+}
+
+.container{
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.card{
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surf) 95%, transparent), var(--surf2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surf) 92%, transparent);
+  color: var(--tx);
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.btn:hover{ transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.btn-primary{
+  background: color-mix(in srgb, var(--accent) 18%, var(--surf));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+.btn-primary:hover{ background: color-mix(in srgb, var(--accent) 26%, var(--surf)); }
+.badge{
+  display:inline-flex; align-items:center;
+  padding: 2px 8px; border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--tx2);
+  background: color-mix(in srgb, var(--surf) 85%, transparent);
+  font-size: 12px;
+}
+.input{
+  width:100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border:1px solid var(--border);
+  background: color-mix(in srgb, var(--surf) 90%, transparent);
+  color: var(--tx);
+  outline:none;
+}
+.input:focus{
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
