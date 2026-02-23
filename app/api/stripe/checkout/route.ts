@@ -14,17 +14,27 @@ const Body = z.object({
   refId: z.string().optional(),
 });
 
-function priceFor(kind: string) {
-  // TODO: in production, prefer Stripe Products/Prices.
-  // Here we use inline price_data for speed.
+type PriceInfo = {
+  amount: number; // in cents
+  name: string;
+  purchaseType: "promo" | "pdf" | "pptx" | "credits_pack";
+  credits?: number;
+};
+
+function priceFor(kind: z.infer<typeof Body>["kind"]): PriceInfo {
   switch (kind) {
-    case "promo10": return { amount: 299, name: "Excelia • 10 créditos promocionais (1x)", meta: { type: "promo" } };
-    case "export_pdf": return { amount: 499, name: "Excelia • Export Dashboard PDF (avulso)", meta: { type: "pdf" } };
-    case "export_pptx": return { amount: 699, name: "Excelia • Export Dashboard PPTX (avulso)", meta: { type: "pptx" } };
-    case "credits_pack_100": return { amount: 1900, name: "Excelia • Pacote 100 créditos", meta: { type: "credits_pack", credits: "100" } };
-    case "credits_pack_300": return { amount: 4900, name: "Excelia • Pacote 300 créditos", meta: { type: "credits_pack", credits: "300" } };
-    case "credits_pack_1000": return { amount: 13900, name: "Excelia • Pacote 1000 créditos", meta: { type: "credits_pack", credits: "1000" } };
-    default: throw new Error("Unknown kind");
+    case "promo10":
+      return { amount: 299, name: "Excelia • 10 créditos promocionais (1x)", purchaseType: "promo", credits: 10 };
+    case "export_pdf":
+      return { amount: 499, name: "Excelia • Export Dashboard PDF (avulso)", purchaseType: "pdf" };
+    case "export_pptx":
+      return { amount: 699, name: "Excelia • Export Dashboard PPTX (avulso)", purchaseType: "pptx" };
+    case "credits_pack_100":
+      return { amount: 1900, name: "Excelia • Pacote 100 créditos", purchaseType: "credits_pack", credits: 100 };
+    case "credits_pack_300":
+      return { amount: 4900, name: "Excelia • Pacote 300 créditos", purchaseType: "credits_pack", credits: 300 };
+    case "credits_pack_1000":
+      return { amount: 13900, name: "Excelia • Pacote 1000 créditos", purchaseType: "credits_pack", credits: 1000 };
   }
 }
 
@@ -38,37 +48,56 @@ export async function POST(req: Request) {
 
   // record purchase intent
   const sb = supabaseAdmin();
-  const { data: purchase, error } = await sb.from("purchases").insert({
-    user_id: user.id,
-    type: p.meta.type,
-    provider: "stripe",
-    amount_brl: (p.amount / 100),
-    currency: "BRL",
-    status: "created",
-    meta: { kind: body.kind, refId: body.refId ?? null },
-  }).select("id").single();
+  const { data: purchase, error } = await sb
+    .from("purchases")
+    .insert({
+      user_id: user.id,
+      type: p.purchaseType,
+      provider: "stripe",
+      amount_brl: p.amount / 100,
+      currency: "BRL",
+      status: "created",
+      meta: { kind: body.kind, refId: body.refId ?? null, credits: p.credits ?? null },
+    })
+    .select("id")
+    .single();
+
   if (error) return NextResponse.json({ error: "PURCHASE_CREATE_FAILED", details: error.message }, { status: 500 });
+
+  // Stripe metadata MUST be strings; avoid spreading optional undefined values.
+  const productMetadata: Record<string, string> = {
+    purchase_id: purchase.id,
+    purchase_type: p.purchaseType,
+  };
+  if (typeof p.credits === "number") productMetadata.credits = String(p.credits);
+
+  const sessionMetadata: Record<string, string> = {
+    purchase_id: purchase.id,
+    kind: body.kind,
+  };
+  if (body.refId) sessionMetadata.refId = body.refId;
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     currency: "brl",
-    // Pix for avulsos: allow automatic methods (includes Pix when enabled) OR explicitly set payment_method_types.
-    // Using automatic_payment_methods is simpler.
+    // Pix for avulsos: allow automatic methods (includes Pix when enabled).
     automatic_payment_methods: { enabled: true },
-    line_items: [{
-      quantity: 1,
-      price_data: {
-        currency: "brl",
-        unit_amount: p.amount,
-        product_data: {
-          name: p.name,
-          metadata: { ...p.meta, purchase_id: purchase.id },
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: "brl",
+          unit_amount: p.amount,
+          product_data: {
+            name: p.name,
+            metadata: productMetadata,
+          },
         },
       },
-    }],
+    ],
     success_url: `${siteUrl}/app/billing?success=1`,
     cancel_url: `${siteUrl}/app/billing?canceled=1`,
-    metadata: { purchase_id: purchase.id, kind: body.kind, refId: body.refId ?? "" },
+    metadata: sessionMetadata,
   });
 
   await sb.from("purchases").update({ status: "pending", provider_ref: session.id }).eq("id", purchase.id);
